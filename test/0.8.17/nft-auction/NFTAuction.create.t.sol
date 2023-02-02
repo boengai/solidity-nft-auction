@@ -16,29 +16,29 @@ contract NFTAuctionCreateTest is BaseTest {
     }
 
     function test_create_CreateAuction() public {
-        uint256 bobTokenId = mockNFTA.mintTo(BOB);
         uint256 aliceTokenId = mockNFTA.mintTo(ALICE);
-        uint256 auctinId;
-
-        vm.startPrank(BOB);
-        mockNFTA.setApprovalForAll(address(nftAuction), true);
-        auctinId = nftAuction.create(mockNFTA, bobTokenId, 0.5 ether, 1, 165789);
-        vm.stopPrank();
-        assertEq(mockNFTA.ownerOf(bobTokenId), address(nftAuction));
-        assertEq(auctinId, 1);
+        uint256 bobTokenId = mockNFTA.mintTo(BOB);
+        uint256 auctionId;
 
         vm.startPrank(ALICE);
         mockNFTA.setApprovalForAll(address(nftAuction), true);
-        auctinId = nftAuction.create(mockNFTA, aliceTokenId, 0.5 ether, 1, 165789);
+        auctionId = nftAuction.create(mockNFTA, aliceTokenId, 0.5 ether, 1, 165789);
         vm.stopPrank();
         assertEq(mockNFTA.ownerOf(aliceTokenId), address(nftAuction));
-        assertEq(auctinId, 2);
+        assertEq(auctionId, 1);
+
+        vm.startPrank(BOB);
+        mockNFTA.setApprovalForAll(address(nftAuction), true);
+        auctionId = nftAuction.create(mockNFTA, bobTokenId, 0.5 ether, 1, 165789);
+        vm.stopPrank();
+        assertEq(mockNFTA.ownerOf(bobTokenId), address(nftAuction));
+        assertEq(auctionId, 2);
     }
 
     function test_RevertWhenSendingBadDate() public {
-        uint256 tokenId = mockNFTA.mintTo(BOB);
+        uint256 tokenId = mockNFTA.mintTo(ALICE);
 
-        vm.startPrank(BOB);
+        vm.startPrank(ALICE);
         mockNFTA.setApprovalForAll(address(nftAuction), true);
 
         vm.expectRevert(abi.encodeWithSignature("NFTAuction_CreateBadParameters()"));
@@ -48,9 +48,9 @@ contract NFTAuctionCreateTest is BaseTest {
     }
 
     function test_RevertWhenUserHasntApproveNFTYet() public {
-        uint256 tokenId = mockNFTA.mintTo(BOB);
+        uint256 tokenId = mockNFTA.mintTo(ALICE);
 
-        vm.startPrank(BOB);
+        vm.startPrank(ALICE);
 
         vm.expectRevert(bytes("ERC721: caller is not token owner or approved"));
         nftAuction.create(mockNFTA, tokenId, 0.5 ether, 1, 165789);
@@ -61,7 +61,7 @@ contract NFTAuctionCreateTest is BaseTest {
     function test_RevertWhenUserNotOwner() public {
         uint256 tokenId = mockNFTA.mintTo(ALICE);
 
-        vm.startPrank(BOB);
+        vm.startPrank(ALICE);
 
         vm.expectRevert(bytes("ERC721: caller is not token owner or approved"));
         nftAuction.create(mockNFTA, tokenId, 0.5 ether, 1, 165789);
