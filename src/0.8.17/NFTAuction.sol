@@ -15,6 +15,9 @@ contract NFTAuction is ERC721Holder, INFTAuction {
     error NFTAuction_BidTooLate();
     error NFTAuction_BidTooLowThanMin();
     error NFTAuction_BidLowThanHighest();
+    error NFTAuction_ClaimTooEarly();
+    error NFTAuction_ClaimDone();
+    error NFTAuction_ClaimNotHighestBidder();
 
     // states
     uint256 private auctionIndex;
@@ -99,6 +102,7 @@ contract NFTAuction is ERC721Holder, INFTAuction {
             auction.highestBidder.transfer(auction.highestBid);
         }
 
+        // set new highest bidder
         auction.highestBid = msg.value;
         auction.highestBidAt = block.timestamp;
         auction.highestBidder = payable(msg.sender);
@@ -106,5 +110,28 @@ contract NFTAuction is ERC721Holder, INFTAuction {
         emit BidAuction(_auctionId, msg.sender, msg.value, block.timestamp);
     }
 
-    function claim(uint256 _auctionId) external {}
+    function claim(uint256 _auctionId) external {
+        Auction storage auction = auctions[_auctionId];
+
+        if (block.timestamp < auction.endAt) {
+            revert NFTAuction_ClaimTooEarly();
+        }
+
+        if (auction.highestBidder != msg.sender) {
+            revert NFTAuction_ClaimNotHighestBidder();
+        }
+
+        if (auction.isClaimed) {
+            revert NFTAuction_ClaimDone();
+        }
+
+        // set claimed
+        auction.isClaimed = true;
+
+        // transfer bid to seller
+        payable(auction.seller).transfer(auction.highestBid);
+
+        // transfer NFT to highest bidder
+        IERC721(auction.nftContract).safeTransferFrom(address(this), msg.sender, auction.nftTokenId);
+    }
 }
