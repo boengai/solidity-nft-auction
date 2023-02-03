@@ -2,7 +2,8 @@
 
 pragma solidity ^0.8.17;
 
-import "openzeppelin-contracts/contracts/token/ERC721/ERC721.sol";
+import {ERC721} from "openzeppelin-contracts/contracts/token/ERC721/ERC721.sol";
+import {Strings} from "openzeppelin-contracts/contracts/utils/Strings.sol";
 
 contract MockERC721 is ERC721 {
     uint256 public currentTokenId;
