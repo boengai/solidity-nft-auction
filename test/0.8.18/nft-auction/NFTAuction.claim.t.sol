@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0
 
-pragma solidity ^0.8.17;
+pragma solidity ^0.8.18;
 
 import {NFTAuction} from "../../../src/0.8.17/NFTAuction.sol";
 import {MockERC721} from "../mocks/MockERC721.sol";
