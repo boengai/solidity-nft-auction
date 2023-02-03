@@ -2,9 +2,9 @@
 
 pragma solidity ^0.8.17;
 
-import "../../../src/0.8.17/NFTAuction.sol";
-import "../mocks/MockERC721.sol";
-import "../Base.t.sol";
+import {NFTAuction} from "../../../src/0.8.17/NFTAuction.sol";
+import {MockERC721} from "../mocks/MockERC721.sol";
+import {BaseTest} from "../Base.t.sol";
 
 contract NFTAuctionCreateTest is BaseTest {
     MockERC721 public mockNFTA;

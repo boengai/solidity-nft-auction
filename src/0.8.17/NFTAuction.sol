@@ -2,9 +2,9 @@
 
 pragma solidity ^0.8.17;
 
-import "openzeppelin-contracts/contracts/token/ERC721/IERC721.sol";
-import "openzeppelin-contracts/contracts/token/ERC721/utils/ERC721Holder.sol";
-import "./interfaces/INFTAuction.sol";
+import {IERC721} from "openzeppelin-contracts/contracts/token/ERC721/IERC721.sol";
+import {ERC721Holder} from "openzeppelin-contracts/contracts/token/ERC721/utils/ERC721Holder.sol";
+import {INFTAuction} from "./interfaces/INFTAuction.sol";
 
 contract NFTAuction is ERC721Holder, INFTAuction {
     // errors

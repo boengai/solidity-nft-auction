@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.17;
 
-import "forge-std/Test.sol";
+import {Test} from "forge-std/Test.sol";
 
 contract BaseTest is Test {
     address internal ALICE = address(0xA11CE);
