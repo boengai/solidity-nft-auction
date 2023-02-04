@@ -42,6 +42,7 @@ contract NFTAuction is ERC721Holder, INFTAuction {
         address seller, address nftContract, uint256 nftTokenId, uint256 minBid, uint256 startAt, uint256 endAt
     );
     event BidAuction(uint256 auctionId, address bidder, uint256 bid, uint256 bidAt);
+    event ClaimAuction(uint256 auctionId, address bidder, uint256 claimAt);
 
     constructor() {}
 
@@ -133,5 +134,7 @@ contract NFTAuction is ERC721Holder, INFTAuction {
 
         // transfer NFT to highest bidder
         IERC721(auction.nftContract).safeTransferFrom(address(this), msg.sender, auction.nftTokenId);
+
+        emit ClaimAuction(_auctionId, msg.sender, block.timestamp);
     }
 }
