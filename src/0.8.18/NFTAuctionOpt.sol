@@ -4,9 +4,12 @@ pragma solidity ^0.8.18;
 
 import {IERC721} from "openzeppelin-contracts/contracts/token/ERC721/IERC721.sol";
 import {ERC721Holder} from "openzeppelin-contracts/contracts/token/ERC721/utils/ERC721Holder.sol";
+import {WordCodec} from "./helpers/WordCodec.sol";
 import {INFTAuction} from "./interfaces/INFTAuction.sol";
 
-contract NFTAuction is ERC721Holder, INFTAuction {
+contract NFTAuctionOpt is ERC721Holder, INFTAuction {
+    using WordCodec for bytes32;
+
     // errors
     error NFTAuction_CreateBadParameters();
     error NFTAuction_BidBySeller();
@@ -21,6 +24,11 @@ contract NFTAuction is ERC721Holder, INFTAuction {
 
     // states
     uint256 private auctionIndex;
+    uint256 private constant BIDDER_OFFSET = 96;
+    uint256 private constant BID_AT_OFFSET = 65;
+    uint256 private constant BID_AT_BIT_LENGTH = 31;
+    uint256 private constant BID_OFFSET = 0;
+    uint256 private constant BID_BIT_LENGTH = 65;
 
     struct Auction {
         address payable seller;
@@ -30,9 +38,12 @@ contract NFTAuction is ERC721Holder, INFTAuction {
         uint256 startAt; // timestamp
         uint256 endAt; // timestamp
         bool isClaimed;
-        uint256 highestBid;
-        uint256 highestBidAt; // timestamp
-        address payable highestBidder;
+        // [ bidder address | bid at |   bid   ]
+        // [    160 bit     | 31 bit | 65 bits ]
+        // [ MSB                           LSB ]
+        // the limitation is bid can only less than equal 36.893488147419103231 ether
+        // because the is maximum size for uint256 in 65 bits
+        bytes32 highest;
     }
 
     mapping(uint256 => Auction) private auctions;
@@ -44,12 +55,26 @@ contract NFTAuction is ERC721Holder, INFTAuction {
     event BidAuction(uint256 auctionId, address bidder, uint256 bid, uint256 bidAt);
     event ClaimAuction(uint256 auctionId, address bidder, uint256 claimAt);
 
+    constructor() {}
+
+    function _getHighest(bytes32 _word) internal pure returns (address payable, uint256, uint256) {
+        address bidder = _word.decodeAddress(BIDDER_OFFSET);
+        uint256 bidAt = _word.decodeUint(BID_AT_OFFSET, BID_AT_BIT_LENGTH);
+        uint256 bidPrice = _word.decodeUint(BID_OFFSET, BID_BIT_LENGTH);
+
+        return (payable(bidder), bidAt, bidPrice);
+    }
+
     function auctionInfo(uint256 _auctionId)
         public
         view
         returns (address payable, address, uint256, uint256, uint256, uint256, bool, address payable, uint256, uint256)
     {
         Auction memory auction = auctions[_auctionId];
+
+        address bidder = auction.highest.decodeAddress(BIDDER_OFFSET);
+        uint256 bidAt = auction.highest.decodeUint(BID_AT_OFFSET, BID_AT_BIT_LENGTH);
+        uint256 bidPrice = auction.highest.decodeUint(BID_OFFSET, BID_BIT_LENGTH);
 
         return (
             payable(auction.seller),
@@ -59,9 +84,9 @@ contract NFTAuction is ERC721Holder, INFTAuction {
             auction.startAt,
             auction.endAt,
             auction.isClaimed,
-            payable(auction.highestBidder),
-            auction.highestBidAt,
-            auction.highestBid
+            payable(bidder),
+            bidAt,
+            bidPrice
         );
     }
 
@@ -97,7 +122,8 @@ contract NFTAuction is ERC721Holder, INFTAuction {
             revert NFTAuction_BidBySeller();
         }
 
-        if (auction.highestBidder == msg.sender) {
+        (address highestBidder,, uint256 highestBid) = _getHighest(auction.highest);
+        if (highestBidder == msg.sender) {
             revert NFTAuction_BidRepeatly();
         }
 
@@ -109,23 +135,23 @@ contract NFTAuction is ERC721Holder, INFTAuction {
             revert NFTAuction_BidTooLate();
         }
 
-        if (msg.value < auction.highestBid) {
+        if (msg.value < highestBid) {
             revert NFTAuction_BidLowThanHighest();
         }
 
-        if ((msg.value - auction.highestBid) < auction.minBid) {
+        if ((msg.value - highestBid) < auction.minBid) {
             revert NFTAuction_BidTooLowThanMin();
         }
 
         // transfer previous bid back
-        if (auction.highestBidder != address(0)) {
-            auction.highestBidder.transfer(auction.highestBid);
+        if (highestBidder != address(0)) {
+            payable(highestBidder).transfer(highestBid);
         }
 
         // set new highest bidder
-        auction.highestBid = msg.value;
-        auction.highestBidAt = block.timestamp;
-        auction.highestBidder = payable(msg.sender);
+        auction.highest = auction.highest.insertAddress(msg.sender, BIDDER_OFFSET);
+        auction.highest = auction.highest.insertUint(block.timestamp, BID_AT_OFFSET, BID_AT_BIT_LENGTH);
+        auction.highest = auction.highest.insertUint(msg.value, BID_OFFSET, BID_BIT_LENGTH);
 
         emit BidAuction(_auctionId, msg.sender, msg.value, block.timestamp);
     }
@@ -137,7 +163,8 @@ contract NFTAuction is ERC721Holder, INFTAuction {
             revert NFTAuction_ClaimTooEarly();
         }
 
-        if (auction.highestBidder != msg.sender) {
+        (address highestBidder,, uint256 highestBid) = _getHighest(auction.highest);
+        if (highestBidder != msg.sender) {
             revert NFTAuction_ClaimNotHighestBidder();
         }
 
@@ -149,7 +176,7 @@ contract NFTAuction is ERC721Holder, INFTAuction {
         auction.isClaimed = true;
 
         // transfer bid to seller
-        payable(auction.seller).transfer(auction.highestBid);
+        payable(auction.seller).transfer(highestBid);
 
         // transfer NFT to highest bidder
         IERC721(auction.nftContract).safeTransferFrom(address(this), msg.sender, auction.nftTokenId);

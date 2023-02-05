@@ -2,24 +2,26 @@
 
 pragma solidity ^0.8.18;
 
+import {INFTAuction} from "../../../src/0.8.18/interfaces/INFTAuction.sol";
 import {NFTAuction} from "../../../src/0.8.18/NFTAuction.sol";
+import {NFTAuctionOpt} from "../../../src/0.8.18/NFTAuctionOpt.sol";
 import {MockERC721} from "../mocks/MockERC721.sol";
 import {BaseTest} from "../Base.t.sol";
 
-contract NFTAuctionBidTest is BaseTest {
+abstract contract BaseNFTAuctionBidTest is BaseTest {
     MockERC721 public mockNFTA;
-    NFTAuction public nftAuction;
+    INFTAuction public nftAuction;
     uint256 public aliceTokenId;
     uint256 public aliceAuctionId;
 
-    function setUp() public {
+    function _baseSetUp() internal {
         payable(ALICE).transfer(100 ether);
         payable(BOB).transfer(100 ether);
         payable(CAROL).transfer(100 ether);
         payable(DAN).transfer(100 ether);
 
         mockNFTA = new MockERC721('NFT A', 'NFTA');
-        nftAuction = new NFTAuction();
+
         aliceTokenId = mockNFTA.mintTo(ALICE);
 
         vm.startPrank(ALICE);
@@ -36,7 +38,7 @@ contract NFTAuctionBidTest is BaseTest {
         vm.stopPrank();
 
         // assert lastest bid
-        (,,,,,,, uint256 bobBidded,, address bobAddress) = nftAuction.auctions(aliceAuctionId);
+        (,,,,,,, address bobAddress,, uint256 bobBidded) = nftAuction.auctionInfo(aliceAuctionId);
         assertEq(0.6 ether, bobBidded); // bid price
         assertEq(address(BOB), bobAddress); // bidder
     }
@@ -49,7 +51,7 @@ contract NFTAuctionBidTest is BaseTest {
         vm.stopPrank();
 
         // assert lastest bid
-        (,,,,,,, uint256 bobBidded,, address bobAddress) = nftAuction.auctions(aliceAuctionId);
+        (,,,,,,, address bobAddress,, uint256 bobBidded) = nftAuction.auctionInfo(aliceAuctionId);
         assertEq(0.6 ether, bobBidded); // bid price
         assertEq(address(BOB), bobAddress); // bidder
 
@@ -62,7 +64,7 @@ contract NFTAuctionBidTest is BaseTest {
         // then the contract will return ETH to previous highest bidder
         assertEq(BOB.balance, 100 ether);
         // assert lastest bid
-        (,,,,,,, uint256 carolBidded,, address carolAddress) = nftAuction.auctions(aliceAuctionId);
+        (,,,,,,, address carolAddress,, uint256 carolBidded) = nftAuction.auctionInfo(aliceAuctionId);
         assertEq(1.1 ether, carolBidded); // bid price
         assertEq(address(CAROL), carolAddress); // bidder
 
@@ -73,7 +75,7 @@ contract NFTAuctionBidTest is BaseTest {
         // assert Carol's balance is refuned
         assertEq(CAROL.balance, 100 ether);
         // assert lastest bid
-        (,,,,,,, uint256 danlBidded,, address danlAddress) = nftAuction.auctions(aliceAuctionId);
+        (,,,,,,, address danlAddress,, uint256 danlBidded) = nftAuction.auctionInfo(aliceAuctionId);
         assertEq(1.72 ether, danlBidded); // bid price
         assertEq(address(DAN), danlAddress); // bidder
 
@@ -84,7 +86,7 @@ contract NFTAuctionBidTest is BaseTest {
         // assert Dan's balance is refuned
         assertEq(DAN.balance, 100 ether);
         // assert lastest bid
-        (,,,,,,, uint256 boblBidded2,, address boblAddress2) = nftAuction.auctions(aliceAuctionId);
+        (,,,,,,, address boblAddress2,, uint256 boblBidded2) = nftAuction.auctionInfo(aliceAuctionId);
         assertEq(3 ether, boblBidded2); // bid price
         assertEq(address(BOB), boblAddress2); // bidder
     }
@@ -163,5 +165,19 @@ contract NFTAuctionBidTest is BaseTest {
         nftAuction.bid{value: 1.1 ether}(aliceAuctionId);
 
         vm.stopPrank();
+    }
+}
+
+contract NFTAuctionBidTest is BaseNFTAuctionBidTest {
+    function setUp() public {
+        nftAuction = new NFTAuction();
+        _baseSetUp();
+    }
+}
+
+contract NFTAuctionOptBidTest is BaseNFTAuctionBidTest {
+    function setUp() public {
+        nftAuction = new NFTAuctionOpt();
+        _baseSetUp();
     }
 }
