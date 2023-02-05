@@ -2,17 +2,18 @@
 
 pragma solidity ^0.8.18;
 
+import {INFTAuction} from "../../../src/0.8.18/interfaces/INFTAuction.sol";
 import {NFTAuction} from "../../../src/0.8.18/NFTAuction.sol";
+import {NFTAuctionOpt} from "../../../src/0.8.18/NFTAuctionOpt.sol";
 import {MockERC721} from "../mocks/MockERC721.sol";
 import {BaseTest} from "../Base.t.sol";
 
-contract NFTAuctionCreateTest is BaseTest {
+abstract contract BaseNFTAuctionCreateTest is BaseTest {
     MockERC721 public mockNFTA;
-    NFTAuction public nftAuction;
+    INFTAuction public nftAuction;
 
-    function setUp() public {
+    function _baseSetUp() internal {
         mockNFTA = new MockERC721('NFT A', 'NFTA');
-        nftAuction = new NFTAuction();
     }
 
     function test_create_CreateAuction() public {
@@ -67,5 +68,19 @@ contract NFTAuctionCreateTest is BaseTest {
         nftAuction.create(mockNFTA, tokenId, 0.5 ether, 1, 165789);
 
         vm.stopPrank();
+    }
+}
+
+contract NFTAuctionCreateTest is BaseNFTAuctionCreateTest {
+    function setUp() public {
+        nftAuction = new NFTAuction();
+        _baseSetUp();
+    }
+}
+
+contract NFTAuctionOptCreateTest is BaseNFTAuctionCreateTest {
+    function setUp() public {
+        nftAuction = new NFTAuctionOpt();
+        _baseSetUp();
     }
 }

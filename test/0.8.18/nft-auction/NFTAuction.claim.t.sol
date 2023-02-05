@@ -2,24 +2,25 @@
 
 pragma solidity ^0.8.18;
 
+import {INFTAuction} from "../../../src/0.8.18/interfaces/INFTAuction.sol";
 import {NFTAuction} from "../../../src/0.8.18/NFTAuction.sol";
+import {NFTAuctionOpt} from "../../../src/0.8.18/NFTAuctionOpt.sol";
 import {MockERC721} from "../mocks/MockERC721.sol";
 import {BaseTest} from "../Base.t.sol";
 
-contract NFTAuctionBidTest is BaseTest {
+abstract contract BaseNFTAuctionClaimTest is BaseTest {
     MockERC721 public mockNFTA;
-    NFTAuction public nftAuction;
+    INFTAuction public nftAuction;
     uint256 public aliceTokenId;
     uint256 public aliceAuctionId;
 
-    function setUp() public {
+    function _baseSetUp() internal {
         payable(ALICE).transfer(100 ether);
         payable(BOB).transfer(100 ether);
         payable(CAROL).transfer(100 ether);
         payable(DAN).transfer(100 ether);
 
         mockNFTA = new MockERC721('NFT A', 'NFTA');
-        nftAuction = new NFTAuction();
         aliceTokenId = mockNFTA.mintTo(ALICE);
 
         vm.startPrank(ALICE);
@@ -78,5 +79,19 @@ contract NFTAuctionBidTest is BaseTest {
         nftAuction.claim(aliceAuctionId);
 
         vm.stopPrank();
+    }
+}
+
+contract NFTAuctionClaimTest is BaseNFTAuctionClaimTest {
+    function setUp() public {
+        nftAuction = new NFTAuction();
+        _baseSetUp();
+    }
+}
+
+contract NFTAuctionOptClaimTest is BaseNFTAuctionClaimTest {
+    function setUp() public {
+        nftAuction = new NFTAuctionOpt();
+        _baseSetUp();
     }
 }
